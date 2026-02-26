@@ -73,7 +73,8 @@ bool PrefetchEngine::ip_lookup(uint64_t pc, uint32_t warp_id, uint64_t addr, uin
       int64_t stride_1n = (int64_t)(addr - e.addr[1]);
       if (stride_01 == stride_1n
           && warp_id != e.wid[0]
-          && warp_id != e.wid[1]) {
+          && warp_id != e.wid[1]
+          && e.wid[0] != e.wid[1]) {
         e.stride  = stride_1n;
         e.trained = true;
       } else {
