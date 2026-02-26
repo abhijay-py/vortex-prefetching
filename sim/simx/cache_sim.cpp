@@ -20,6 +20,10 @@
 #include <list>
 #include <queue>
 
+#ifdef MT_HWP_ENABLE
+#include "mt_hwp.h"
+#endif
+
 using namespace vortex;
 
 struct params_t {
@@ -322,6 +326,9 @@ public:
 		, sets_(params.sets_per_bank, params.lines_per_set)
 		, mshr_(config.mshr_size)
 		, pipe_req_(TFifo<bank_req_t>::Create("", config.latency-1))
+#ifdef MT_HWP_ENABLE
+		, prefetch_cache_(nullptr)
+#endif
 	{
 		this->reset();
 	}
@@ -461,6 +468,28 @@ private:
 				--pending_mshr_size_;
 			} else {
 				// Miss handling
+#ifdef MT_HWP_ENABLE
+				// Check prefetch cache before going to memory
+				// mitul: use claude code
+				if (prefetch_cache_ && !bank_req.write) {
+					uint64_t full_addr = params_.mem_addr(bank_id_, bank_req.set_id, bank_req.addr_tag);
+					if (prefetch_cache_->lookup_and_consume(full_addr)) {
+						// Prefetch cache hit — install in dcache and respond (no memory access)
+						int line_id = (free_line_id != -1) ? free_line_id : repl_line_id;
+						auto& line = set.lines.at(line_id);
+						line.valid   = true;
+						line.tag     = bank_req.addr_tag;
+						line.dirty   = false;
+						line.lru_ctr = 0;
+						MemRsp core_rsp{bank_req.req_tag, bank_req.cid, bank_req.uuid};
+						this->core_rsp_port.push(core_rsp);
+						DT(3, this->name() << "-prefetch-hit: " << core_rsp);
+						--pending_mshr_size_;
+						pipe_req_->pop();
+						return;
+					}
+				}
+#endif
 				if (bank_req.write)
 					++perf_stats_.write_misses;
 				else
@@ -542,6 +571,11 @@ private:
 	uint64_t pending_read_reqs_;
 	uint64_t pending_write_reqs_;
 	uint64_t pending_fill_reqs_;
+
+public:
+#ifdef MT_HWP_ENABLE
+	PrefetchCache* prefetch_cache_;
+#endif
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -658,12 +692,19 @@ public:
 			bank_rsp_port.pop();
 		}
 
-		// schedule core requests
+		// schedule core requests (demand > prefetch priority)
+#ifdef MT_HWP_ENABLE
+		for (uint32_t pass = 0; pass < 2; ++pass) {
+#endif
 		for (uint32_t req_id = 0, n = config_.num_inputs; req_id < n; ++req_id) {
 			auto& core_req_port = simobject_->CoreReqPorts.at(req_id);
 			if (core_req_port.empty())
 				continue;
 			auto& core_req = core_req_port.front();
+#ifdef MT_HWP_ENABLE
+			if (pass == 0 &&  core_req.prefetch) continue; // demand-only pass
+			if (pass == 1 && !core_req.prefetch) continue; // prefetch-only pass
+#endif
 			if (core_req.type == AddrType::IO) {
 				this->processBypassRequest(core_req, req_id);
 			} else {
@@ -671,6 +712,9 @@ public:
 			}
 			core_req_port.pop();
 		}
+#ifdef MT_HWP_ENABLE
+		}
+#endif
 	}
 
 	PerfStats perf_stats() const {
@@ -683,6 +727,15 @@ public:
 		}
 		return perf_stats;
 	}
+
+#ifdef MT_HWP_ENABLE
+	void link_prefetch_cache(PrefetchCache* pcache) {
+		if (config_.bypass) return;
+		for (auto& bank : banks_) {
+			bank->prefetch_cache_ = pcache;
+		}
+	}
+#endif
 
 private:
 
@@ -747,3 +800,9 @@ void CacheSim::tick() {
 CacheSim::PerfStats CacheSim::perf_stats() const {
   return impl_->perf_stats();
 }
+
+#ifdef MT_HWP_ENABLE
+void CacheSim::link_prefetch_cache(PrefetchCache* pcache) {
+  impl_->link_prefetch_cache(pcache);
+}
+#endif

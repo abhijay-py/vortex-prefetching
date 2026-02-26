@@ -168,6 +168,8 @@ Core::Core(const SimContext& ctx,
     commit_arbs_.at(iw) = arbiter;
   }
 
+  // MT-HWP: throttle_engine_ already linked to prefetch_cache_ via constructor
+
   this->reset();
 }
 
@@ -200,6 +202,12 @@ void Core::reset() {
   pending_ifetches_ = 0;
 
   perf_stats_ = PerfStats();
+
+#ifdef MT_HWP_ENABLE
+  prefetch_engine_.reset();
+  prefetch_cache_.reset();
+  throttle_engine_.reset();
+#endif
 }
 
 void Core::tick() {
@@ -211,6 +219,11 @@ void Core::tick() {
   this->schedule();
 
   ++perf_stats_.cycles;
+
+#ifdef MT_HWP_ENABLE
+  throttle_engine_.tick(perf_stats_.cycles);
+#endif
+
   DPN(2, std::flush);
 }
 

@@ -323,6 +323,65 @@ void LsuUnit::tick() {
 			} else {
 				core_->perf_stats_.loads += count;
 				pending_loads_ += count;
+
+#ifdef MT_HWP_ENABLE
+				// --- MT-HWP: train engine and issue prefetches on demand loads ---
+				// @mitul: working now
+				core_->throttle_engine_.record_request();
+
+				uint32_t t0 = pending_addrs_.size() - remain_addrs_ - count;
+				for (uint32_t i = t0; i < t0 + count; ++i) {
+					uint64_t addr = pending_addrs_.at(i).addr;
+
+					// Check prefetch cache for demand hit
+					if (core_->prefetch_cache_.lookup_and_consume(addr)) {
+						core_->perf_stats_.prefetch_useful++;
+						DT(3, this->name() << "-hwp-demand-hit: addr=0x" << std::hex << addr << std::dec << " (#" << trace->uuid << ")");
+					}
+
+					// Train MT-HWP engine; get prefetch addresses
+					auto pf_addrs = core_->prefetch_engine_.on_memory_access(
+						trace->PC, trace->wid, addr);
+
+					for (auto pf_addr : pf_addrs) {
+						// Dedup: skip if same line as current demand
+						uint64_t pf_line = pf_addr >> 6;
+						bool is_demand_line = false;
+						for (uint32_t j = t0; j < t0 + count; ++j) {
+							if ((pending_addrs_.at(j).addr >> 6) == pf_line) {
+								is_demand_line = true;
+								break;
+							}
+						}
+						if (is_demand_line) {
+							DT(3, this->name() << "-hwp-dedup: pf=0x" << std::hex << pf_addr << std::dec << " matches demand line");
+							continue;
+						}
+
+						// Skip if already in-flight
+						if (core_->prefetch_cache_.is_inflight(pf_addr)) {
+							DT(3, this->name() << "-hwp-inflight: pf=0x" << std::hex << pf_addr << std::dec << " already pending");
+							continue;
+						}
+
+						// Throttle gate
+						if (!core_->throttle_engine_.should_prefetch()) {
+							core_->perf_stats_.prefetch_throttled++;
+							DT(3, this->name() << "-hwp-throttled: pf=0x" << std::hex << pf_addr << std::dec);
+							continue;
+						}
+
+						// Insert into prefetch cache (for tracking/metrics)
+						uint64_t pf_line_addr = pf_addr & ~uint64_t(63);
+						core_->prefetch_cache_.insert(pf_line_addr);
+						core_->perf_stats_.prefetch_issued++;
+						DT(3, this->name() << "-hwp-issued: pf=0x" << std::hex << pf_line_addr << std::dec
+						   << ", pc=0x" << std::hex << trace->PC << std::dec
+						   << ", wid=" << trace->wid
+						   << " (#" << trace->uuid << ")");
+					}
+				}
+#endif // MT_HWP_ENABLE
 			}
 		}
 

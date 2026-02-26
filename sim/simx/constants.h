@@ -52,4 +52,27 @@ inline constexpr uint32_t L3_NUM_REQS     = NUM_CLUSTERS * L2_MEM_PORTS;
 inline constexpr uint32_t PER_ISSUE_WARPS = NUM_WARPS / ISSUE_WIDTH;
 inline constexpr uint32_t ISSUE_WIS_BITS  = log2ceil(PER_ISSUE_WARPS);
 
+#ifdef MT_HWP_ENABLE
+// MT-HWP table sizes
+inline constexpr uint32_t PWS_TABLE_SIZE       = 32;
+inline constexpr uint32_t GS_TABLE_SIZE        = 8;
+inline constexpr uint32_t IP_TABLE_SIZE        = 8;
+inline constexpr uint32_t GS_PROMOTION_THRESH  = 3;
+inline constexpr uint32_t IP_TRAINING_THRESH   = 3;
+
+// Prefetch cache (16 KB, 8-way, 64-byte lines => 32 sets)
+inline constexpr uint32_t PREFETCH_CACHE_SIZE  = 16384;
+inline constexpr uint32_t PREFETCH_CACHE_WAYS  = 8;
+inline constexpr uint32_t PREFETCH_CACHE_LINE  = 64;
+inline constexpr uint32_t PREFETCH_CACHE_SETS  = PREFETCH_CACHE_SIZE / (PREFETCH_CACHE_WAYS * PREFETCH_CACHE_LINE);
+
+// Prefetch degree/distance
+inline constexpr uint32_t PREFETCH_DEGREE      = 1;
+inline constexpr uint32_t PREFETCH_DISTANCE    = 1;
+
+// Throttling
+inline constexpr uint32_t THROTTLE_PERIOD      = 100000;
+inline constexpr uint32_t THROTTLE_DEGREE_INIT = 2;
+#endif
+
 } // namespace vortex

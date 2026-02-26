@@ -968,6 +968,9 @@ struct MemReq {
   uint32_t tag;
   uint32_t cid;
   uint64_t uuid;
+#ifdef MT_HWP_ENABLE
+  bool     prefetch = false;
+#endif
 
   MemReq(uint64_t _addr = 0,
           bool _write = false,
@@ -975,12 +978,18 @@ struct MemReq {
           uint64_t _tag = 0,
           uint32_t _cid = 0,
           uint64_t _uuid = 0
+#ifdef MT_HWP_ENABLE
+          , bool _prefetch = false
+#endif
   ) : addr(_addr)
     , write(_write)
     , type(_type)
     , tag(_tag)
     , cid(_cid)
     , uuid(_uuid)
+#ifdef MT_HWP_ENABLE
+    , prefetch(_prefetch)
+#endif
   {}
 
   friend std::ostream &operator<<(std::ostream &os, const MemReq& req) {
@@ -988,6 +997,9 @@ struct MemReq {
     os << "addr=0x" << std::hex << req.addr << std::dec << ", type=" << req.type;
     os << ", tag=0x" << std::hex << req.tag << std::dec << ", cid=" << req.cid;
     os << " (#" << req.uuid << ")";
+#ifdef MT_HWP_ENABLE
+    if (req.prefetch) os << " [PF]";
+#endif
     return os;
   }
 };
@@ -998,16 +1010,29 @@ struct MemRsp {
   uint64_t tag;
   uint32_t cid;
   uint64_t uuid;
+#ifdef MT_HWP_ENABLE
+  bool     prefetch = false;
+#endif
 
-  MemRsp(uint64_t _tag = 0, uint32_t _cid = 0, uint64_t _uuid = 0)
+  MemRsp(uint64_t _tag = 0, uint32_t _cid = 0, uint64_t _uuid = 0
+#ifdef MT_HWP_ENABLE
+         , bool _prefetch = false
+#endif
+  )
     : tag (_tag)
     , cid(_cid)
     , uuid(_uuid)
+#ifdef MT_HWP_ENABLE
+    , prefetch(_prefetch)
+#endif
   {}
 
   friend std::ostream &operator<<(std::ostream &os, const MemRsp& rsp) {
     os << "tag=0x" << std::hex << rsp.tag << std::dec << ", cid=" << rsp.cid;
     os << " (#" << rsp.uuid << ")";
+#ifdef MT_HWP_ENABLE
+    if (rsp.prefetch) os << " [PF]";
+#endif
     return os;
   }
 };

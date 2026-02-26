@@ -110,6 +110,10 @@ Socket::Socket(const SimContext& ctx,
       cores_.at(i)->dcache_req_ports.at(j).bind(&dcaches_->CoreReqPorts.at(i).at(j));
       dcaches_->CoreRspPorts.at(i).at(j).bind(&cores_.at(i)->dcache_rsp_ports.at(j));
     }
+
+#ifdef MT_HWP_ENABLE
+    dcaches_->link_prefetch_cache(&cores_.at(i)->prefetch_cache_);
+#endif
   }
 }
 

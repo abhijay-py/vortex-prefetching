@@ -95,6 +95,14 @@ public:
 		return perf;
 	}
 
+#ifdef MT_HWP_ENABLE
+	void link_prefetch_cache(class PrefetchCache* pcache) {
+		for (auto cache : caches_) {
+			cache->link_prefetch_cache(pcache);
+		}
+	}
+#endif
+
 private:
   std::vector<CacheSim::Ptr> caches_;
 };

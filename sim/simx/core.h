@@ -35,6 +35,10 @@
 #include "mem_coalescer.h"
 #include "VX_config.h"
 
+#ifdef MT_HWP_ENABLE
+#include "mt_hwp.h"
+#endif
+
 namespace vortex {
 
 class Socket;
@@ -69,6 +73,12 @@ public:
     uint64_t stores;
     uint64_t ifetch_latency;
     uint64_t load_latency;
+#ifdef MT_HWP_ENABLE
+    uint64_t prefetch_issued;
+    uint64_t prefetch_useful;
+    uint64_t prefetch_early_evict;
+    uint64_t prefetch_throttled;
+#endif
 
     PerfStats()
       : cycles(0)
@@ -96,6 +106,12 @@ public:
       , stores(0)
       , ifetch_latency(0)
       , load_latency(0)
+#ifdef MT_HWP_ENABLE
+      , prefetch_issued(0)
+      , prefetch_useful(0)
+      , prefetch_early_evict(0)
+      , prefetch_throttled(0)
+#endif
     {}
   };
 
@@ -232,6 +248,13 @@ private:
   friend class AluUnit;
   friend class FpuUnit;
   friend class SfuUnit;
+
+#ifdef MT_HWP_ENABLE
+public:
+  PrefetchEngine  prefetch_engine_;
+  PrefetchCache   prefetch_cache_;
+  ThrottleEngine  throttle_engine_{&prefetch_cache_};
+#endif
 };
 
 } // namespace vortex

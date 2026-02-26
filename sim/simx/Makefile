@@ -39,6 +39,10 @@ endif
 ifneq ($(findstring -DEXT_TCU_ENABLE, $(CONFIGS)),)
   	SRCS += $(SRC_DIR)/tensor_unit.cpp
 endif
+# Add MT-HWP prefetcher sources
+ifneq ($(findstring -DMT_HWP_ENABLE, $(CONFIGS)),)
+  	SRCS += $(SRC_DIR)/mt_hwp.cpp
+endif
 
 # Debugging
 ifdef DEBUG

@@ -84,6 +84,11 @@ public:
 
 	PerfStats perf_stats() const;
 
+#ifdef MT_HWP_ENABLE
+	/// Attach a prefetch cache to check on dcache miss
+	void link_prefetch_cache(class PrefetchCache* pcache);
+#endif
+
 private:
 	class Impl;
 	Impl* impl_;
