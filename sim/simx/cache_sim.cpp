@@ -174,6 +174,9 @@ struct bank_req_t {
 	uint64_t uuid;
 	ReqType  type;
 	bool     write;
+#ifdef MT_HWP_ENABLE
+	bool     prefetch = false;
+#endif
 
 	bank_req_t() {
 		this->reset();
@@ -377,10 +380,16 @@ private:
 				DT(3, this->name() << "-fill-rsp: " << mem_rsp);
 				// update MSHR
 				auto& entry = mshr_.replay(mem_rsp.tag);
-				auto& set   = sets_.at(entry.bank_req.set_id);
-				auto& line  = set.lines.at(entry.line_id);
-				line.valid  = true;
-				line.tag    = entry.bank_req.addr_tag;
+#ifdef MT_HWP_ENABLE
+				// For prefetch fills we don't put data in dcache, it goes to the prefetch cache on replay
+				if (!entry.bank_req.prefetch)
+#endif
+				{
+					auto& set  = sets_.at(entry.bank_req.set_id);
+					auto& line = set.lines.at(entry.line_id);
+					line.valid = true;
+					line.tag   = entry.bank_req.addr_tag;
+				}
 				mshr_.dequeue(&bank_req);
 				--pending_mshr_size_;
 				pipe_req_->push(bank_req);
@@ -407,6 +416,9 @@ private:
 				bank_req.addr_tag = params_.addr_tag(core_req.addr);
 				bank_req.req_tag = core_req.tag;
 				bank_req.write = core_req.write;
+#ifdef MT_HWP_ENABLE
+				bank_req.prefetch = core_req.prefetch;
+#endif
 				pipe_req_->push(bank_req);
 				if (core_req.write)
 					++perf_stats_.writes;
@@ -427,6 +439,17 @@ private:
 		case bank_req_t::None:
 			break;
 		case bank_req_t::Replay: {
+#ifdef MT_HWP_ENABLE
+			if (bank_req.prefetch) {
+				// Prefetch fill complete.... insert tag into prefetch cache and drop response
+				if (prefetch_cache_) {
+					uint64_t full_addr = params_.mem_addr(bank_id_, bank_req.set_id, bank_req.addr_tag);
+					prefetch_cache_->insert(full_addr);
+					DT(3, this->name() << "-hwp-pf-fill: addr=0x" << std::hex << full_addr << std::dec);
+				}
+				break;
+			}
+#endif
 			// send core response
 			if (!bank_req.write || config_.write_reponse) {
 				MemRsp core_rsp{bank_req.req_tag, bank_req.cid, bank_req.uuid};
@@ -460,6 +483,9 @@ private:
 					}
 				}
 				// send core response
+#ifdef MT_HWP_ENABLE
+				if (!bank_req.prefetch)
+#endif
 				if (!bank_req.write || config_.write_reponse) {
 					MemRsp core_rsp{bank_req.req_tag, bank_req.cid, bank_req.uuid};
 					this->core_rsp_port.push(core_rsp);

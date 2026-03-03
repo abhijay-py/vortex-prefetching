@@ -251,6 +251,9 @@ private:
 
 #ifdef MT_HWP_ENABLE
 public:
+// @mitul: extra ports required for prefetcher.. can't use the existing dcache ports
+  SimPort<MemReq> pf_dcache_req_port;
+  SimPort<MemRsp> pf_dcache_rsp_port;
   PrefetchEngine  prefetch_engine_;
   PrefetchCache   prefetch_cache_;
   ThrottleEngine  throttle_engine_{&prefetch_cache_};

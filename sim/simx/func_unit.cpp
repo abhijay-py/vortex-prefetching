@@ -371,9 +371,18 @@ void LsuUnit::tick() {
 							continue;
 						}
 
-						// Insert into prefetch cache (for tracking/metrics)
+						// @mitul: prefetch as a real read operation
 						uint64_t pf_line_addr = pf_addr & ~uint64_t(63);
-						core_->prefetch_cache_.insert(pf_line_addr);
+						core_->prefetch_cache_.mark_inflight(pf_line_addr);
+						MemReq pf_req;
+						pf_req.addr     = pf_line_addr;
+						pf_req.write    = false;
+						pf_req.type     = AddrType::Global;
+						pf_req.tag      = 0;  // no instruction is waiting
+						pf_req.cid      = trace->cid;
+						pf_req.uuid     = trace->uuid;
+						pf_req.prefetch = true;
+						core_->pf_dcache_req_port.push(pf_req);
 						core_->perf_stats_.prefetch_issued++;
 						DT(3, this->name() << "-hwp-issued: pf=0x" << std::hex << pf_line_addr << std::dec
 						   << ", pc=0x" << std::hex << trace->PC << std::dec

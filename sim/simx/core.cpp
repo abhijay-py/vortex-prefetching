@@ -56,6 +56,10 @@ Core::Core(const SimContext& ctx,
   , pending_icache_(arch_.num_warps())
   , commit_arbs_(ISSUE_WIDTH)
   , ibuffer_arbs_(ISSUE_WIDTH, {ArbiterType::RoundRobin, PER_ISSUE_WARPS})
+#ifdef MT_HWP_ENABLE
+  , pf_dcache_req_port(this)
+  , pf_dcache_rsp_port(this)
+#endif
 {
   char sname[100];
 
