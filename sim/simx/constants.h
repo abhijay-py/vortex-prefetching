@@ -52,6 +52,18 @@ inline constexpr uint32_t L3_NUM_REQS     = NUM_CLUSTERS * L2_MEM_PORTS;
 inline constexpr uint32_t PER_ISSUE_WARPS = NUM_WARPS / ISSUE_WIDTH;
 inline constexpr uint32_t ISSUE_WIS_BITS  = log2ceil(PER_ISSUE_WARPS);
 
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+// PA Scheduler
+inline constexpr uint32_t PA_FETCH_GROUP_SIZE   = 8;
+
+// SLD Prefetcher — adapted for Vortex's 64B cache lines
+inline constexpr uint32_t SLD_TABLE_SIZE        = 64;  // fully-associative entries
+inline constexpr uint32_t SLD_LINE_SHIFT        = 6;   // 64B cache line (2^6)
+inline constexpr uint32_t SLD_LINES_PER_MACRO   = 4;   // 4 lines per macro-block
+inline constexpr uint32_t SLD_MACROBLOCK_SHIFT  = 8;   // 256B macro-block (4 × 64B = 2^8)
+inline constexpr uint32_t SLD_COVERAGE_THRESH   = 2;   // prefetch when >= C lines accessed
+#endif
+
 #ifdef MT_HWP_ENABLE
 // MT-HWP table sizes
 inline constexpr uint32_t PWS_TABLE_SIZE       = 32;

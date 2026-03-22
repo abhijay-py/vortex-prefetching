@@ -126,7 +126,51 @@ void Emulator::reset() {
   active_warps_.set(0);
   warps_[0].tmask.set(0);
   wspawn_.valid = false;
+
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+  groups_formed_ = false;
+  active_group_  = 0;
+  rr_index_      = 0;
+  fetch_groups_.clear();
+#endif
 }
+
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+// PA scheduler: Algorithm 1 from Jog et al. ISCA 2013.
+// Places non-consecutive warps in the same fetch group so that consecutive
+// warps (which prefetch for each other) are scheduled far apart in time.
+void Emulator::form_fetch_groups() {
+  uint32_t n_warp = arch_.num_warps();
+  uint32_t g_size = PA_FETCH_GROUP_SIZE;
+
+  fetch_groups_.clear();
+
+  if (n_warp == 0)
+    return;
+
+  if (n_warp <= g_size) {
+    // Fewer warps than one group: put everything in a single group
+    fetch_groups_.emplace_back();
+    for (uint32_t i = 0; i < n_warp; ++i)
+      fetch_groups_[0].push_back(i);
+    DP(3, "*** PA-sched: groups formed (single), n_warp=" << n_warp);
+    return;
+  }
+
+  uint32_t n_grp = n_warp / g_size;
+  // n_cons_warps: number of consecutive warps allowed in the same group (min 1)
+  uint32_t n_cons_warps = std::max(1u, g_size / n_grp);
+
+  fetch_groups_.resize(n_grp);
+  for (uint32_t i = 0; i < n_warp; ++i) {
+    uint32_t g = (i / n_cons_warps) % n_grp;
+    fetch_groups_[g].push_back(i);
+  }
+  DP(3, "*** PA-sched: groups formed, n_warp=" << n_warp
+     << ", n_grp=" << n_grp
+     << ", n_cons_warps=" << n_cons_warps);
+}
+#endif
 
 void Emulator::attach_ram(RAM* ram) {
   // bind RAM to memory unit
@@ -163,8 +207,45 @@ instr_trace_t* Emulator::step() {
     }
     wspawn_.valid = false;
     stalled_warps_.reset(0);
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+    // Re-form groups now that warp count has changed
+    groups_formed_ = false;
+#endif
   }
 
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+  // PA two-level warp scheduler
+  if (!groups_formed_) {
+    form_fetch_groups();
+    groups_formed_ = true;
+    active_group_  = 0;
+    rr_index_      = 0;
+  }
+
+  {
+    uint32_t n_groups = fetch_groups_.size();
+    for (uint32_t attempt = 0; attempt < n_groups; ++attempt) {
+      auto& group = fetch_groups_[active_group_];
+      uint32_t gsz = group.size();
+      for (uint32_t i = 0; i < gsz; ++i) {
+        uint32_t idx = (rr_index_ + i) % gsz;
+        uint32_t wid = group[idx];
+        // @mitul: added stalled condition
+        if (active_warps_.test(wid) && !stalled_warps_.test(wid)) {
+          scheduled_warp = (int)wid;
+          rr_index_ = (idx + 1) % gsz;
+          break;
+        }
+      }
+      if (scheduled_warp != -1)
+        break;
+      // All warps in the active group are stalled --> advance to the next group
+      active_group_ = (active_group_ + 1) % n_groups;
+      rr_index_ = 0;
+      DP(3, "*** PA-sched: switch to group " << active_group_);
+    }
+  }
+#else
   // find next ready warp
   for (size_t wid = 0, nw = arch_.num_warps(); wid < nw; ++wid) {
     bool warp_active = active_warps_.test(wid);
@@ -174,6 +255,7 @@ instr_trace_t* Emulator::step() {
       break;
     }
   }
+#endif
 
   if (scheduled_warp == -1)
     return nullptr;

@@ -57,7 +57,7 @@ Socket::Socket(const SimContext& ctx,
     log2ceil(DCACHE_NUM_WAYS),// A
     log2ceil(DCACHE_NUM_BANKS), // B
     XLEN,                   // address bits
-#ifdef MT_HWP_ENABLE
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
     DCACHE_NUM_REQS + 1,    // number of inputs (+1 for prefetch port)
 #else
     DCACHE_NUM_REQS,        // number of inputs
@@ -119,6 +119,10 @@ Socket::Socket(const SimContext& ctx,
     dcaches_->link_prefetch_cache(&cores_.at(i)->prefetch_cache_);
     cores_.at(i)->pf_dcache_req_port.bind(&dcaches_->CoreReqPorts.at(i).at(DCACHE_NUM_REQS));
     dcaches_->CoreRspPorts.at(i).at(DCACHE_NUM_REQS).bind(&cores_.at(i)->pf_dcache_rsp_port);
+#endif
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+    cores_.at(i)->sld_dcache_req_port.bind(&dcaches_->CoreReqPorts.at(i).at(DCACHE_NUM_REQS));
+    dcaches_->CoreRspPorts.at(i).at(DCACHE_NUM_REQS).bind(&cores_.at(i)->sld_dcache_rsp_port);
 #endif
   }
 }

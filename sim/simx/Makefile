@@ -43,6 +43,10 @@ endif
 ifneq ($(findstring -DMT_HWP_ENABLE, $(CONFIGS)),)
   	SRCS += $(SRC_DIR)/mt_hwp.cpp
 endif
+# Add Orchestrated Scheduling + SLD prefetcher sources
+ifneq ($(findstring -DORCHESTRATED_PREFETCH_ENABLE, $(CONFIGS)),)
+  	SRCS += $(SRC_DIR)/sld_prefetcher.cpp
+endif
 
 # Debugging
 ifdef DEBUG

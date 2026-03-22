@@ -391,6 +391,32 @@ void LsuUnit::tick() {
 					}
 				}
 #endif // MT_HWP_ENABLE
+
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+			{
+				uint32_t t0_sld = pending_addrs_.size() - remain_addrs_ - count;
+				for (uint32_t i = t0_sld; i < t0_sld + count; ++i) {
+					uint64_t addr = pending_addrs_.at(i).addr;
+					auto pf_addrs = core_->sld_prefetcher_.on_cache_miss(addr);
+					for (auto pf_addr : pf_addrs) {
+						MemReq pf_req;
+						pf_req.addr     = pf_addr;
+						pf_req.write    = false;
+						pf_req.type     = AddrType::Global;
+						pf_req.tag      = 0;
+						pf_req.cid      = trace->cid;
+						pf_req.uuid     = trace->uuid;
+						pf_req.prefetch = true;
+						core_->sld_dcache_req_port.push(pf_req);
+						core_->perf_stats_.sld_prefetch_issued++;
+						DT(3, this->name() << "-sld-issued: pf=0x"
+						   << std::hex << pf_addr << std::dec
+						   << " from addr=0x" << std::hex << addr << std::dec
+						   << " (#" << trace->uuid << ")");
+					}
+				}
+			}
+#endif // ORCHESTRATED_PREFETCH_ENABLE
 			}
 		}
 

@@ -60,6 +60,10 @@ Core::Core(const SimContext& ctx,
   , pf_dcache_req_port(this)
   , pf_dcache_rsp_port(this)
 #endif
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+  , sld_dcache_req_port(this)
+  , sld_dcache_rsp_port(this)
+#endif
 {
   char sname[100];
 
@@ -211,6 +215,9 @@ void Core::reset() {
   prefetch_engine_.reset();
   prefetch_cache_.reset();
   throttle_engine_.reset();
+#endif
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+  sld_prefetcher_.reset();
 #endif
 }
 

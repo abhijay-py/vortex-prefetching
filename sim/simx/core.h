@@ -39,6 +39,10 @@
 #include "mt_hwp.h"
 #endif
 
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+#include "sld_prefetcher.h"
+#endif
+
 namespace vortex {
 
 class Socket;
@@ -79,6 +83,10 @@ public:
     uint64_t prefetch_early_evict;
     uint64_t prefetch_throttled;
 #endif
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+    uint64_t sld_prefetch_issued;
+    uint64_t sld_macroblock_hits;
+#endif
 
     PerfStats()
       : cycles(0)
@@ -111,6 +119,10 @@ public:
       , prefetch_useful(0)
       , prefetch_early_evict(0)
       , prefetch_throttled(0)
+#endif
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+      , sld_prefetch_issued(0)
+      , sld_macroblock_hits(0)
 #endif
     {}
   };
@@ -257,6 +269,13 @@ public:
   PrefetchEngine  prefetch_engine_;
   PrefetchCache   prefetch_cache_;
   ThrottleEngine  throttle_engine_{&prefetch_cache_};
+#endif
+
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+public:
+  SimPort<MemReq>  sld_dcache_req_port;
+  SimPort<MemRsp>  sld_dcache_rsp_port;
+  SLDPrefetcher    sld_prefetcher_;
 #endif
 };
 

@@ -20,6 +20,7 @@
 #include <mem.h>
 #include "types.h"
 #include "instr.h"
+#include "constants.h"
 #ifdef EXT_TCU_ENABLE
 #include "tensor_unit.h"
 #endif
@@ -154,6 +155,15 @@ private:
   uint32_t    ipdom_size_;
   Word        csr_mscratch_;
   wspawn_t    wspawn_;
+
+#ifdef ORCHESTRATED_PREFETCH_ENABLE
+  // PA two-level warp scheduler state
+  std::vector<std::vector<uint32_t>> fetch_groups_; // fetch_groups_[g] = warp IDs in group g
+  uint32_t active_group_;   // currently scheduled fetch group index
+  uint32_t rr_index_;       // round-robin cursor within the active group
+  bool     groups_formed_;  // whether groups have been computed for current warp count
+
+  void form_fetch_groups();
 
 #ifdef EXT_TCU_ENABLE
   TensorUnit::Ptr tensor_unit_;
