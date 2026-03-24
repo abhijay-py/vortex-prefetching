@@ -164,6 +164,7 @@ private:
   bool     groups_formed_;  // whether groups have been computed for current warp count
 
   void form_fetch_groups();
+#endif // ORCHESTRATED_PREFETCH_ENABLE
 
 #ifdef EXT_TCU_ENABLE
   TensorUnit::Ptr tensor_unit_;
