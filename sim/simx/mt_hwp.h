@@ -125,6 +125,8 @@ private:
   uint64_t period_merges_;
   uint64_t period_requests_;
   double merge_ratio_prev_;
+  uint64_t prev_useful_prefetches_;
+  uint64_t prev_early_evictions_;
 };
 
 } // namespace vortex

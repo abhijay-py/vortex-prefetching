@@ -333,12 +333,6 @@ void LsuUnit::tick() {
 				for (uint32_t i = t0; i < t0 + count; ++i) {
 					uint64_t addr = pending_addrs_.at(i).addr;
 
-					// Check prefetch cache for demand hit
-					if (core_->prefetch_cache_.lookup_and_consume(addr)) {
-						core_->perf_stats_.prefetch_useful++;
-						DT(3, this->name() << "-hwp-demand-hit: addr=0x" << std::hex << addr << std::dec << " (#" << trace->uuid << ")");
-					}
-
 					// Train MT-HWP engine; get prefetch addresses
 					auto pf_addrs = core_->prefetch_engine_.on_memory_access(
 						trace->PC, trace->wid, addr);

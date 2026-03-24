@@ -64,11 +64,11 @@ bool PrefetchEngine::ip_lookup(uint64_t pc, uint32_t warp_id, uint64_t addr, uin
       return true;
     }
 
-    if (e.obs_count < 2) {
+    if (e.obs_count < 2 && (e.obs_count == 0 || warp_id != e.wid[0])) {
       e.wid[e.obs_count]  = warp_id;
       e.addr[e.obs_count] = addr;
       e.obs_count++;
-    } else {
+    } else if (e.obs_count == 2) {
       int64_t stride_01 = (int64_t)(e.addr[1] - e.addr[0]);
       int64_t stride_1n = (int64_t)(addr - e.addr[1]);
       if (stride_01 == stride_1n
@@ -320,11 +320,13 @@ ThrottleEngine::ThrottleEngine(const PrefetchCache* pcache)
 }
 
 void ThrottleEngine::reset() {
-  degree_            = THROTTLE_DEGREE_INIT;
-  last_update_cycle_ = 0;
-  period_merges_     = 0;
-  period_requests_   = 0;
-  merge_ratio_prev_  = 0.0;
+  degree_                 = THROTTLE_DEGREE_INIT;
+  last_update_cycle_      = 0;
+  period_merges_          = 0;
+  period_requests_        = 0;
+  merge_ratio_prev_       = 0.0;
+  prev_useful_prefetches_ = 0;
+  prev_early_evictions_   = 0;
 }
 
 void ThrottleEngine::tick(uint64_t cycle) {
@@ -357,11 +359,15 @@ void ThrottleEngine::update_degree() {
   if (!pcache_)
     return;
 
-  // Eq. 5 — early eviction rate
+  // Eq. 5 — early eviction rate (per-period deltas, not cumulative)
   double early_eviction_rate = 0.0;
-  if (pcache_->useful_prefetches > 0) {
-    early_eviction_rate = (double)pcache_->early_evictions / (double)pcache_->useful_prefetches;
+  uint64_t period_useful   = pcache_->useful_prefetches - prev_useful_prefetches_;
+  uint64_t period_early_ev = pcache_->early_evictions   - prev_early_evictions_;
+  if (period_useful > 0) {
+    early_eviction_rate = (double)period_early_ev / (double)period_useful;
   }
+  prev_useful_prefetches_ = pcache_->useful_prefetches;
+  prev_early_evictions_   = pcache_->early_evictions;
 
   // Eq. 6 — merge ratio
   double merge_ratio_monitored = 0.0;
@@ -381,7 +387,7 @@ void ThrottleEngine::update_degree() {
     if (merge_ratio_current > 0.15) {
       if (degree_ > 0) degree_--;
     } else {
-      degree_ = 5;
+      if (degree_ < 5) degree_++;
     }
   }
 
