@@ -84,8 +84,9 @@ def main():
                 for test in tests:
                     result = run_test(driver, c, w, t, config_setup[pconfig], test)
 
+                    print(f"Ran {test} with config {config} and prefetching config {pconfig}.\n")
                     print(result.stdout)
-                    print(f"Ran {test} with config {config} and prefetching config {pconfig}. Return code: {result.returncode}\n")
+                    print(f"Return code: {result.returncode}\n")
 
                     output = []
                     if result.returncode == 124:
