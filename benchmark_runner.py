@@ -27,8 +27,16 @@ header = ["Config", "Application", "Status", "IPC", "dcache_read_miss_%", "l2_re
 #Test execution command (currently set to run w/ l2cache + perf=2 along with the parameters provided)
 def run_test(driver, cores, warps, threads, config, test):
     cmd = f"CONFIGS={config} ./ci/blackbox.sh --app={test} --cores={cores} --warps={warps} --threads={threads} --driver={driver} --l2cache --perf=2"
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    return result
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=900)
+        return result
+    except subprocess.TimeoutExpired:
+        # Return a fake result indicating timeout
+        class TimeoutResult:
+            returncode = 124 
+            stdout = "TIMEOUT"
+            stderr = "Test exceeded 15 minute timeout"
+        return TimeoutResult()
 
 #Clear prior csv files
 def clear_files():
@@ -80,8 +88,11 @@ def main():
                     print(f"Ran {test} with config {config} and prefetching config {pconfig}. Return code: {result.returncode}\n")
 
                     output = []
-                    if result.returncode != 0:
-                        output = ['', test, 'FAILED']
+                    if result.returncode == 124:
+                        output = ['', test, 'TIMEOUT']
+                        output.extend(['N/A'] * (len(header) - len(output)))   
+                    elif result.returncode != 0:
+                        output = ['', test, 'ERROR']
                         output.extend(['N/A'] * (len(header) - len(output)))   
                     elif "passed" not in result.stdout.lower():
                         output = ['', test, 'PASSED (npm)']
