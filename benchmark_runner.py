@@ -82,9 +82,8 @@ def main():
                 writer.writerow(prefetching_config_line)
                 
                 for test in tests:
-                    result = run_test(driver, c, w, t, config_setup[pconfig], test)
-
                     print(f"Ran {test} with config {config} and prefetching config {pconfig}.\n")
+                    result = run_test(driver, c, w, t, config_setup[pconfig], test)
                     print(result.stdout)
                     print(f"Return code: {result.returncode}\n")
 
