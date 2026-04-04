@@ -1,4 +1,6 @@
-import csv, subprocess, glob
+import csv, subprocess, glob, time
+from datetime import datetime
+import pytz #ensure pytz is installed
 import pandas as pd #ensure pandas is installed + openpyxl for Excel export
 
 #PARAMETERS
@@ -34,7 +36,7 @@ def run_test(driver, cores, warps, threads, config, test):
         # Return a fake result indicating timeout
         class TimeoutResult:
             returncode = 124 
-            stdout = "TIMEOUT"
+            stdout = "TIMEOUT\n"
             stderr = "Test exceeded 15 minute timeout"
         return TimeoutResult()
 
@@ -65,8 +67,9 @@ def combine_csvs_to_excel(output_file="benchmark_results.xlsx"):
 def main():
     if clear_csv_on_run:
         clear_files()
-
+    runtime = time.time()
     for config in configs:
+        config_runtime = time.time()
         print(f"Starting Config: {config}\n\n")
         c = int(config.split('w')[0][1:])
         w = int(config.split('w')[1].split('t')[0])
@@ -77,15 +80,18 @@ def main():
             writer.writerow(header)
             
             for pconfig in prefetching_configs:
+                pconfig_runtime = time.time()
                 print(f"Running Prefetching Config: {pconfig}\n")
                 prefetching_config_line = [pconfig if i == 0 else "" for i in range(len(header))]
                 writer.writerow(prefetching_config_line)
                 
                 for test in tests:
-                    print(f"Ran {test} with config {config} and prefetching config {pconfig}.\n")
+                    test_runtime = time.time()
+                    curr_time = datetime.now(pytz.utc).astimezone(pytz.timezone('US/Eastern')).strftime("%Y-%m-%d %H:%M:%S")
+                    print(f"({curr_time} EST) Running {test} with config {config} and prefetching config {pconfig}.\n")
                     result = run_test(driver, c, w, t, config_setup[pconfig], test)
-                    print(result.stdout)
-                    print(f"Return code: {result.returncode}\n")
+                    print(result.stdout, end='')
+                    print(f"Return code: {result.returncode}, Time Elapsed: {((time.time() - test_runtime)):.2f} s\n")
 
                     output = []
                     if result.returncode == 124:
@@ -154,9 +160,9 @@ def main():
                     writer.writerow(output)
             
                 writer.writerow([''] * len(header))
-                print(f"Finished Prefetching Config: {pconfig}\n")
-        print(f"Finished Config: {config}\n\n")
-    
+                print(f"Finished Prefetching Config: {pconfig}, Time Elapsed: {(time.time() - pconfig_runtime):.2f} s\n")
+        print(f"Finished Config: {config}, Time Elapsed: {(time.time() - config_runtime):.2f} s\n\n")
+    print(f"All tests completed, Total Time Elapsed: {(time.time() - runtime):.2f} s\n")
     if export_to_xlsx:
         combine_csvs_to_excel()
 
