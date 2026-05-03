@@ -411,6 +411,35 @@ void LsuUnit::tick() {
 				}
 			}
 #endif // ORCHESTRATED_PREFETCH_ENABLE
+
+#ifdef SNAKE_PREFETCH_ENABLE
+			{
+				uint32_t t0_snake = pending_addrs_.size() - remain_addrs_ - count;
+				for (uint32_t i = t0_snake; i < t0_snake + count; ++i) {
+					uint64_t addr = pending_addrs_.at(i).addr;
+					auto pf_addrs = core_->snake_prefetcher_.on_memory_access(
+						trace->PC, trace->wid, addr);
+					for (auto pf_addr : pf_addrs) {
+						MemReq pf_req;
+						pf_req.addr     = pf_addr;
+						pf_req.write    = false;
+						pf_req.type     = AddrType::Global;
+						pf_req.tag      = 0;
+						pf_req.cid      = trace->cid;
+						pf_req.uuid     = trace->uuid;
+						pf_req.prefetch = true;
+						core_->snake_dcache_req_port.push(pf_req);
+						core_->perf_stats_.snake_prefetch_issued++;
+						DT(3, this->name() << "-snake-issued: pf=0x"
+						   << std::hex << pf_addr << std::dec
+						   << " from addr=0x" << std::hex << addr << std::dec
+						   << ", pc=0x" << std::hex << trace->PC << std::dec
+						   << ", wid=" << trace->wid
+						   << " (#" << trace->uuid << ")");
+					}
+				}
+			}
+#endif // SNAKE_PREFETCH_ENABLE
 			}
 		}
 

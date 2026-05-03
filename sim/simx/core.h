@@ -43,6 +43,10 @@
 #include "sld_prefetcher.h"
 #endif
 
+#ifdef SNAKE_PREFETCH_ENABLE
+#include "snake_prefetcher.h"
+#endif
+
 namespace vortex {
 
 class Socket;
@@ -87,6 +91,9 @@ public:
     uint64_t sld_prefetch_issued;
     uint64_t sld_macroblock_hits;
 #endif
+#ifdef SNAKE_PREFETCH_ENABLE
+    uint64_t snake_prefetch_issued;
+#endif
 
     PerfStats()
       : cycles(0)
@@ -123,6 +130,9 @@ public:
 #ifdef ORCHESTRATED_PREFETCH_ENABLE
       , sld_prefetch_issued(0)
       , sld_macroblock_hits(0)
+#endif
+#ifdef SNAKE_PREFETCH_ENABLE
+      , snake_prefetch_issued(0)
 #endif
     {}
   };
@@ -276,6 +286,13 @@ public:
   SimPort<MemReq>  sld_dcache_req_port;
   SimPort<MemRsp>  sld_dcache_rsp_port;
   SLDPrefetcher    sld_prefetcher_;
+#endif
+
+#ifdef SNAKE_PREFETCH_ENABLE
+public:
+  SimPort<MemReq>  snake_dcache_req_port;
+  SimPort<MemRsp>  snake_dcache_rsp_port;
+  SnakePrefetcher  snake_prefetcher_;
 #endif
 };
 

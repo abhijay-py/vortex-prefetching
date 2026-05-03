@@ -64,6 +64,14 @@ inline constexpr uint32_t SLD_MACROBLOCK_SHIFT  = 8;   // 256B macro-block (4 ×
 inline constexpr uint32_t SLD_COVERAGE_THRESH   = 2;   // prefetch when >= C lines accessed
 #endif
 
+#ifdef SNAKE_PREFETCH_ENABLE
+// Snake prefetcher — variable-length chain-based inter-thread stride detection
+inline constexpr uint32_t SNAKE_HEAD_ENTRIES   = 64;  // one slot per warp (matches MAX_NUM_WARPS)
+inline constexpr uint32_t SNAKE_TAIL_ENTRIES   = 64;  // fully-associative stride-chain table
+inline constexpr uint32_t SNAKE_TRAIN_THRESH   = 3;   // warps required to confirm a chain
+inline constexpr uint32_t SNAKE_MAX_WIDS       = 8;   // warp IDs tracked per tail entry
+#endif
+
 #ifdef MT_HWP_ENABLE
 // MT-HWP table sizes
 inline constexpr uint32_t PWS_TABLE_SIZE       = 32;

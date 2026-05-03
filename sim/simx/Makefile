@@ -47,6 +47,10 @@ endif
 ifneq ($(findstring -DORCHESTRATED_PREFETCH_ENABLE, $(CONFIGS)),)
   	SRCS += $(SRC_DIR)/sld_prefetcher.cpp
 endif
+# Add Snake prefetcher sources
+ifneq ($(findstring -DSNAKE_PREFETCH_ENABLE, $(CONFIGS)),)
+  	SRCS += $(SRC_DIR)/snake_prefetcher.cpp
+endif
 
 # Debugging
 ifdef DEBUG

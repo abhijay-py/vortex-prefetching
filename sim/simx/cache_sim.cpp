@@ -174,7 +174,7 @@ struct bank_req_t {
 	uint64_t uuid;
 	ReqType  type;
 	bool     write;
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
 	bool     prefetch = false;
 #endif
 
@@ -416,7 +416,7 @@ private:
 				bank_req.addr_tag = params_.addr_tag(core_req.addr);
 				bank_req.req_tag = core_req.tag;
 				bank_req.write = core_req.write;
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
 				bank_req.prefetch = core_req.prefetch;
 #endif
 				pipe_req_->push(bank_req);
@@ -451,7 +451,7 @@ private:
 			}
 #endif
 			// send core response (suppressed for SLD prefetches — data already in dcache)
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
 			if (!bank_req.prefetch)
 #endif
 			if (!bank_req.write || config_.write_reponse) {
@@ -486,7 +486,7 @@ private:
 					}
 				}
 				// send core response
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
 				if (!bank_req.prefetch)
 #endif
 				if (!bank_req.write || config_.write_reponse) {
@@ -722,7 +722,7 @@ public:
 		}
 
 		// schedule core requests (demand > prefetch priority)
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
 		for (uint32_t pass = 0; pass < 2; ++pass) {
 #endif
 		for (uint32_t req_id = 0, n = config_.num_inputs; req_id < n; ++req_id) {
@@ -730,7 +730,7 @@ public:
 			if (core_req_port.empty())
 				continue;
 			auto& core_req = core_req_port.front();
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
 			if (pass == 0 &&  core_req.prefetch) continue; // demand-only pass
 			if (pass == 1 && !core_req.prefetch) continue; // prefetch-only pass
 #endif
@@ -741,7 +741,7 @@ public:
 			}
 			core_req_port.pop();
 		}
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
 		}
 #endif
 	}

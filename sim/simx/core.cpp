@@ -64,6 +64,10 @@ Core::Core(const SimContext& ctx,
   , sld_dcache_req_port(this)
   , sld_dcache_rsp_port(this)
 #endif
+#ifdef SNAKE_PREFETCH_ENABLE
+  , snake_dcache_req_port(this)
+  , snake_dcache_rsp_port(this)
+#endif
 {
   char sname[100];
 
@@ -218,6 +222,9 @@ void Core::reset() {
 #endif
 #ifdef ORCHESTRATED_PREFETCH_ENABLE
   sld_prefetcher_.reset();
+#endif
+#ifdef SNAKE_PREFETCH_ENABLE
+  snake_prefetcher_.reset();
 #endif
 }
 

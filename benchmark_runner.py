@@ -1,18 +1,22 @@
+#Run in build folder: python3 $HOME/vortex-prefetching/benchmark_runner.py 2>&1 | tee benchmarks_log.txt
+
+#Might need venv to run pip installed packages in vortex folder
 import csv, subprocess, glob, time
 from datetime import datetime
 import pytz #ensure pytz is installed
 import pandas as pd #ensure pandas is installed + openpyxl for Excel export
 
 #PARAMETERS
-clear_csv_on_run = True
-export_to_xlsx = True
+clear_csv_on_run = True #delete prior csv files on new run
+clear_xlsx_on_run = True #delete prior xlsx files on new run
+export_to_xlsx = True #combine csv files into a single Excel file at the end of the run
 
 #CWT configs to run
 configs = ['c1w2t16', 'c1w2t32', 'c1w4t8', 'c1w4t16', 'c1w8t8', 'c2w2t16', 'c2w2t32', 'c2w4t8', 'c2w4t16', 'c2w8t8', 'c4w4t8', 'c4w4t16', 'c8w4t4'] #cores, warps, threads
 
 #prefetching configs
-prefetching_configs = ["baseline", "MT_HWP_ENABLE", "ORCHESTRATED_PREFETCH_ENABLE"]
-config_setup = {'baseline': '', 'MT_HWP_ENABLE': '-DMT_HWP_ENABLE', 'ORCHESTRATED_PREFETCH_ENABLE': '-DORCHESTRATED_PREFETCH_ENABLE'}
+prefetching_configs = ["baseline", "MT_HWP_ENABLE", "ORCHESTRATED_PREFETCH_ENABLE", "SNAKE_PREFETCH_ENABLE"]
+config_setup = {'baseline': '', 'MT_HWP_ENABLE': '-DMT_HWP_ENABLE', 'ORCHESTRATED_PREFETCH_ENABLE': '-DORCHESTRATED_PREFETCH_ENABLE', 'SNAKE_PREFETCH_ENABLE': '-DSNAKE_PREFETCH_ENABLE'}
 
 #Codebase to run on
 driver = "simx" #running on simx
@@ -24,29 +28,14 @@ tests = ["oclprintf", "conv3", "nearn", "dotproduct", "blackscholes", "bfs", "sf
 header = ["Config", "Application", "Status", "IPC", "dcache_read_miss_%", "l2_read_miss_%", "coalescer_miss_%", "memory_read_reqs", "dcache_mshr_stalls", "l2_mshr_stalls", "memory_latency_cycles"]
 
 
-
-
-#Test execution command (currently set to run w/ l2cache + perf=2 along with the parameters provided)
-def run_test(driver, cores, warps, threads, config, test):
-    cmd = f"CONFIGS={config} ./ci/blackbox.sh --app={test} --cores={cores} --warps={warps} --threads={threads} --driver={driver} --l2cache --perf=2"
-    try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=900)
-        return result
-    except subprocess.TimeoutExpired:
-        # Return a fake result indicating timeout
-        class TimeoutResult:
-            returncode = 124 
-            stdout = "TIMEOUT\n"
-            stderr = "Test exceeded 15 minute timeout"
-        return TimeoutResult()
-
 #Clear prior csv files
 def clear_files():
-    cmd = "rm -f *.csv"
-    subprocess.run(cmd, shell=True)
-    cmd = "rm -f *.xlsx"
-    subprocess.run(cmd, shell=True)
-
+    if clear_xlsx_on_run:
+        cmd = "rm -f *.xlsx"
+        subprocess.run(cmd, shell=True)
+    if clear_csv_on_run:
+        cmd = "rm -f *.csv"
+        subprocess.run(cmd, shell=True)
 
 #Combine all csv files into a single Excel file with separate sheets for each config
 def combine_csvs_to_excel(output_file="benchmark_results.xlsx"):
@@ -63,9 +52,23 @@ def combine_csvs_to_excel(output_file="benchmark_results.xlsx"):
     
     print(f"Combined {len(csv_files)} CSV files into {output_file}")
 
+#Test execution command (currently set to run w/ l2cache + perf=2 along with the parameters provided)
+def run_test(driver, cores, warps, threads, config, test):
+    cmd = f"CONFIGS={config} ./ci/blackbox.sh --app={test} --cores={cores} --warps={warps} --threads={threads} --driver={driver} --l2cache --perf=2"
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=900)
+        return result
+    except subprocess.TimeoutExpired:
+        # Return a fake result indicating timeout
+        class TimeoutResult:
+            returncode = 124 
+            stdout = "TIMEOUT\n"
+            stderr = "Test exceeded 15 minute timeout"
+        return TimeoutResult()
+
 
 def main():
-    if clear_csv_on_run:
+    if clear_csv_on_run or clear_xlsx_on_run:
         clear_files()
     runtime = time.time()
     for config in configs:
@@ -111,7 +114,7 @@ def main():
                         dcache_read_misses = 0
                         dcache_reads = 0
                         dcache_mshr_stalls = 0
-                        l2_miss_percent = "N/A"
+                        l2_hit_percent = "N/A"
                         l2_mshr_stalls = "N/A"
                         coalescer_miss_list = []
                         mem_read_reqs = "N/A"
@@ -128,7 +131,7 @@ def main():
                             elif "dcache mshr stalls" in line:
                                 dcache_mshr_stalls += int(line.split()[4].split('=')[1])
                             elif "l2cache read misses" in line:
-                                l2_miss_percent = 100 - int(line.split("(hit ratio=")[1][:-2])
+                                l2_hit_percent = int(line.split("(hit ratio=")[1][:-2])
                             elif "l2cache mshr stalls" in line:
                                 l2_mshr_stalls = int(line.split()[3].split('=')[1])
                             elif "coalescer misses" in line:
@@ -142,11 +145,11 @@ def main():
                                 mem_latency = int(line.split()[2].split('=')[1])
 
                         output.append(ipc)
-                        dcache_miss_percent = round((dcache_read_misses / dcache_reads) * 100) if dcache_reads > 0 else "N/A"
-                        output.append(dcache_miss_percent)
-                        output.append(l2_miss_percent)
-                        coalescer_miss_percent = round(100 * sum([i for i, j in coalescer_miss_list])/sum([i / ((100 - j) / 100)for i, j in coalescer_miss_list])) if len(coalescer_miss_list) > 0 else "N/A"
-                        output.append(coalescer_miss_percent if coalescer_miss_percent != "N/A" and 0 <= coalescer_miss_percent <= 100 else "N/A")
+                        dcache_hit_percent = round(((dcache_reads - dcache_read_misses) / dcache_reads) * 100) if dcache_reads > 0 else "N/A"
+                        output.append(dcache_hit_percent)
+                        output.append(l2_hit_percent)
+                        coalescer_hit_perecent = 100 - round(100 * sum([i for i, j in coalescer_miss_list])/sum([i / ((100 - j) / 100)for i, j in coalescer_miss_list])) if len(coalescer_miss_list) > 0 else "N/A"
+                        output.append(coalescer_hit_perecent if coalescer_hit_perecent != "N/A" and 0 <= coalescer_hit_perecent <= 100 else "N/A")
                         output.append(mem_read_reqs)
                         # output.append(mem_bank_stalls)
                         if ipc == "N/A":

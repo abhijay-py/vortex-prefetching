@@ -968,7 +968,7 @@ struct MemReq {
   uint32_t tag;
   uint32_t cid;
   uint64_t uuid;
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
   bool     prefetch = false;
 #endif
 
@@ -978,7 +978,7 @@ struct MemReq {
           uint64_t _tag = 0,
           uint32_t _cid = 0,
           uint64_t _uuid = 0
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
           , bool _prefetch = false
 #endif
   ) : addr(_addr)
@@ -987,7 +987,7 @@ struct MemReq {
     , tag(_tag)
     , cid(_cid)
     , uuid(_uuid)
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
     , prefetch(_prefetch)
 #endif
   {}
@@ -997,7 +997,7 @@ struct MemReq {
     os << "addr=0x" << std::hex << req.addr << std::dec << ", type=" << req.type;
     os << ", tag=0x" << std::hex << req.tag << std::dec << ", cid=" << req.cid;
     os << " (#" << req.uuid << ")";
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
     if (req.prefetch) os << " [PF]";
 #endif
     return os;
@@ -1010,19 +1010,19 @@ struct MemRsp {
   uint64_t tag;
   uint32_t cid;
   uint64_t uuid;
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
   bool     prefetch = false;
 #endif
 
   MemRsp(uint64_t _tag = 0, uint32_t _cid = 0, uint64_t _uuid = 0
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
          , bool _prefetch = false
 #endif
   )
     : tag (_tag)
     , cid(_cid)
     , uuid(_uuid)
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
     , prefetch(_prefetch)
 #endif
   {}
@@ -1030,7 +1030,7 @@ struct MemRsp {
   friend std::ostream &operator<<(std::ostream &os, const MemRsp& rsp) {
     os << "tag=0x" << std::hex << rsp.tag << std::dec << ", cid=" << rsp.cid;
     os << " (#" << rsp.uuid << ")";
-#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE)
+#if defined(MT_HWP_ENABLE) || defined(ORCHESTRATED_PREFETCH_ENABLE) || defined(SNAKE_PREFETCH_ENABLE)
     if (rsp.prefetch) os << " [PF]";
 #endif
     return os;
