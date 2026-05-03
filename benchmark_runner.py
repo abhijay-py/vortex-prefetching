@@ -1,4 +1,4 @@
-#Run in build folder: python3 $HOME/vortex-prefetching/benchmark_runner.py 2>&1 | tee benchmarks_log.txt
+#Run in build folder: python3 ../../vortex-prefetching/benchmark_runner.py 2>&1 | tee benchmarks_log.txt
 
 #Might need venv to run pip installed packages in vortex folder
 import csv, subprocess, glob, time
@@ -25,7 +25,7 @@ driver = "simx" #running on simx
 tests = ["oclprintf", "conv3", "nearn", "dotproduct", "blackscholes", "bfs", "sfilter", "psum", "psort", "saxpy", "guassian", "lbm", "vecadd", "sgemm", "sgemm2", "sgemm3", "spmv", "kmeans", "stencil", "transpose"]
 
 #tracking prefetching metrics
-header = ["Config", "Application", "Status", "IPC", "dcache_read_miss_%", "l2_read_miss_%", "coalescer_miss_%", "memory_read_reqs", "dcache_mshr_stalls", "l2_mshr_stalls", "memory_latency_cycles"]
+header = ["Config", "Application", "Status", "IPC", "dcache_read_hit_%", "l2_read_hit_%", "coalescer_hit_%", "memory_read_reqs", "dcache_mshr_stalls", "l2_mshr_stalls", "memory_latency_cycles"]
 
 
 #Clear prior csv files
